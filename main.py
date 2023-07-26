@@ -5,17 +5,23 @@ import machine
 import onewire
 import ds18x20
 import credentials
+import utime
 
+# select sensor and interval in seconds
 ena_ds18x20 = True
+int_ds18x20 = 10
 
 sk_server = "192.168.2.47"
 
 # needs to be defined as UDP input in SignalK server
 sk_udp_port = 20222
 
-source_prefix = "WirelessSensor_"
+source_prefix = "WirelessSensor"
 
 debug = True
+
+last_readout_DS1820 = 0
+last_status = 0
 
 if debug: print("Connected to WiFi\n")
 
@@ -51,20 +57,24 @@ if ena_ds18x20:
 
 while True:
     # main loop
+    current_time = utime.ticks_ms()
+    if utime.ticks_diff(current_time, last_status) >= 10 * 1000:
+        sk_transmit(source_prefix+"_RSSI","sensor.rssi", str(sta_if.status()), sk_udp_port)
+        last_status = current_time
 
     if ena_ds18x20:
-        i = 0
-        ds_sensor.convert_temp()
-        time.sleep(1)
-        for rom in roms:
-            # read temperature and convert to Kelvin
-            a = ds_sensor.read_temp(rom) + 273.15
-            sk_transmit(source_prefix+"DS18B20_S"+str(i), "environment.temperature.outside", str(a), sk_udp_port)
-            i +=1
-            print(a)
+        if utime.ticks_diff(current_time, last_readout_DS1820) >= int_ds18x20 * 1000:
+            i = 0
+            ds_sensor.convert_temp()
+            time.sleep(1)
+            for rom in roms:
+                # read temperature and convert to Kelvin
+                a = ds_sensor.read_temp(rom) + 273.15
+                sk_transmit(source_prefix+"_DS18B20_S"+str(i), "environment.temperature.outside", str(a), sk_udp_port)
+                i +=1
+                print(a)
+            last_readout_DS1820 = current_time
 
 
-    #sk_transmit("OrangePi","tanks.lpg.0.currentLevel",str(a), sk_udp_port)
-    time.sleep(1)
 
 
