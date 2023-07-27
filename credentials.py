@@ -1,3 +1,3 @@
 # WiFi credentials
 ssid = "kreml"
-password = "DUMMY!"
+password = "RaidOverMoscow!"
