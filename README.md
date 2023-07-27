@@ -8,3 +8,9 @@ Feel free to adapt to your needs.
 Please adapt credentials.py to your needs.
 You have to set up a SignalK server on your boat. I use a Raspberry Pi with OpenPlotter and SignalK.
 Create a data port in SignalK. I use port 20222 UDP and let my sensors send data to this port.
+
+Sensors currently working:
+- BMP180 (Temperature, Pressure)
+- DS18B20 (Temperature)
+- Pulse-counter (e.g. for engine revolutions)
+
