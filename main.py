@@ -30,8 +30,8 @@ ll_rev = 5
 # BMP180 for pressure
 ena_bmp180 = True
 int_bmp180 = 120
-pin_sda = 4
-pin_scl = 5
+pin_sda = 0
+pin_scl = 2
 
 # you signalk server here
 #sk_server = "192.168.2.47"
@@ -42,7 +42,7 @@ sk_udp_port = 20222
 
 source_prefix = "ESMSensor_Helm"
 
-debug = False
+debug = True
 
 
 # init delay to give uploader a chance
@@ -52,7 +52,7 @@ time.sleep(5)
 # declarations
 last_readout_DS1820 = 0
 last_readout_BMP180 = 0
-last_readout_dev = 0
+last_readout_rev = 0
 last_status = 0
 pulse_count = 0
 sock = None
@@ -126,11 +126,14 @@ if ena_rev:
     timer.init(period=1000, mode=machine.Timer.PERIODIC, callback=rev_timer_callback)
 
 if ena_bmp180:
-    i2c = machine.I2C(sda=machine.Pin(pin_sda), scl = machine.Pin(pin_scl))
-    bmp = BMP180(i2c)
-    bmp.oversample = 3
-    bmp.sealevel = 101325
-
+    try:
+        i2c = machine.I2C(sda=machine.Pin(pin_sda), scl = machine.Pin(pin_scl))
+        bmp = BMP180(i2c)
+        bmp.oversample = 3
+        bmp.sealevel = 101325
+    except:
+        print("BMP180 init failed")
+        ena_bmp180 = False
 
 while True:
     # main loop
