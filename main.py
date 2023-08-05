@@ -17,7 +17,7 @@ ena_wifi = True
 # DS18x20
 ena_ds18x20 = True
 int_ds18x20 = 60
-pin_ds18x20 = 13
+pin_ds18x20 = 4
 
 # Pulse Counter (for RPM)
 ena_rev = False
@@ -40,7 +40,7 @@ sk_server = "10.10.10.1"
 # needs to be defined as UDP input in SignalK server
 sk_udp_port = 20222
 
-source_prefix = "ESMSensor_Helm"
+source_prefix = "ESMS_Helm"
 
 debug = True
 
@@ -57,6 +57,7 @@ last_status = 0
 pulse_count = 0
 sock = None
 
+# rev counter stuff (pulse counter)
 def pulse_callback(p):
     # this is the callback from the pulse counter interrupt
     global pulse_count
@@ -78,6 +79,7 @@ def rev_timer_callback(t):
     last_readout_rev = current_time
 
 def sk_transmit(source: str, path: str, value: str, port):
+    # this function sends a value to the SignalK server
     global ena_wifi, sock
     SignalK = '{"updates": [{"$source": "'+source+'","values":[ {"path":"'+path+'","value":' + value+ '}]}]}'
 
@@ -90,6 +92,7 @@ def sk_transmit(source: str, path: str, value: str, port):
 
 
 def get_uptime():
+    # this function returns the uptime in minutes
     millis = utime.ticks_ms()
     minutes = millis / 60000
     return minutes
@@ -141,10 +144,11 @@ while True:
     if utime.ticks_diff(current_time, last_status) >= 10 * 1000:
         if ena_wifi:
             sk_transmit(source_prefix+"_status","sensor.rssi", str(sta_if.status()), sk_udp_port)
-        sk_transmit(source_prefix + "_status", "sensor.uptime", str(get_uptime()), sk_udp_port)
+            sk_transmit(source_prefix + "_status", "sensor.uptime", str(get_uptime()), sk_udp_port)
         last_status = current_time
 
     if ena_bmp180:
+        # readout BMP180 (only pressure since the sensor is in a case and temperature is not accurate)
         p: int = 0
         if utime.ticks_diff(current_time, last_readout_BMP180) >= int_bmp180 * 1000:
             p = bmp.pressure * 100 # needs to be in pascal
@@ -152,6 +156,8 @@ while True:
             last_readout_BMP180 = current_time
 
     if ena_ds18x20:
+        # readout DS18x20
+        # todo: handle multiple sensors
         if utime.ticks_diff(current_time, last_readout_DS1820) >= int_ds18x20 * 1000:
             i = 0
             ds_sensor.convert_temp()
