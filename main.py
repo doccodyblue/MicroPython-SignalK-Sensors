@@ -9,7 +9,6 @@ import utime
 from bmp085 import BMP180
 
 
-
 # wifi should be disabled only for debugging
 ena_wifi = True
 
@@ -143,8 +142,8 @@ while True:
     current_time = utime.ticks_ms()
     if utime.ticks_diff(current_time, last_status) >= 10 * 1000:
         if ena_wifi:
-            sk_transmit(source_prefix+"_status","sensor.rssi", str(sta_if.status()), sk_udp_port)
-            sk_transmit(source_prefix + "_status", "sensor.uptime", str(get_uptime()), sk_udp_port)
+            sk_transmit(source_prefix+"_status","sensors."+source_prefix+".rssi", str(sta_if.status()), sk_udp_port)
+            sk_transmit(source_prefix + "_status", "sensors."+source_prefix+".uptime", str(get_uptime()), sk_udp_port)
         last_status = current_time
 
     if ena_bmp180:
@@ -165,7 +164,7 @@ while True:
             for rom in roms:
                 # read temperature and convert to Kelvin
                 a = ds_sensor.read_temp(rom) + 273.15
-                sk_transmit(source_prefix+"_DS18B20_S"+str(i), "environment.temperature.outside", str(a), sk_udp_port)
+                sk_transmit(source_prefix+"_DS18B20_S"+str(i), "environment.outside.temperature", str(a), sk_udp_port)
                 i +=1
             last_readout_DS1820 = current_time
 
