@@ -40,8 +40,14 @@ sk_server = "10.10.10.1"
 sk_udp_port = 20222
 
 source_prefix = "ESMS_Helm"
-
 debug = True
+
+#########
+# decleration
+previous_tick = 0
+overflow_counter = 0
+MAX_MILLIS = 2**32  # This assumes a 32-bit tick counter
+
 
 
 # init delay to give uploader a chance
@@ -78,40 +84,60 @@ def rev_timer_callback(t):
     last_readout_rev = current_time
 
 def sk_transmit(source: str, path: str, value: str, port):
-    # this function sends a value to the SignalK server
-    global ena_wifi, sock
-    SignalK = '{"updates": [{"$source": "'+source+'","values":[ {"path":"'+path+'","value":' + value+ '}]}]}'
+    if check_wifi_connection():
+        # only send if wifi is connected
+        # this function sends a value to the SignalK server
+        global ena_wifi, sock
+        SignalK = '{"updates": [{"$source": "'+source+'","values":[ {"path":"'+path+'","value":' + value+ '}]}]}'
 
-    if debug: print("Sending: ", SignalK)
-    if ena_wifi:
-        # Only create a new socket if one doesn't exist
-        if sock is None:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.sendto(SignalK.encode(), (sk_server, sk_udp_port))
+        if debug: print("Sending: ", SignalK)
+        if ena_wifi:
+            # Only create a new socket if one doesn't exist
+            if sock is None:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.sendto(SignalK.encode(), (sk_server, sk_udp_port))
+    else:
+        if debug: print("WiFi not connected. Not sending data.")
+
 
 
 def get_uptime():
-    # this function returns the uptime in minutes
-    millis = utime.ticks_ms()
-    minutes = millis / 60000
-    return minutes
+    global previous_tick, overflow_counter
+    current_tick = utime.ticks_ms()
+
+    # Check for overflow
+    if current_tick < previous_tick:
+        overflow_counter += 1
+
+    previous_tick = current_tick
+
+    total_millis = current_tick + overflow_counter * MAX_MILLIS
+    total_minutes = total_millis / 60000
+
+    return total_minutes
+
+def check_wifi_connection():
+    global sta_if
+    if not sta_if.isconnected():
+        if debug: print("WiFi disconnected. Trying to reconnect...")
+        time.sleep(10) # delay to reconnect
+        connect_to_wifi()
+
+def connect_to_wifi():
+    global sta_if
+    sta_if.active(True)
+    sta_if.connect(credentials.ssid, credentials.password)
+
+    while not sta_if.isconnected():
+        time.sleep(1)
+        if debug: print("Waiting for WiFi...")
 
 ## main
 # connect to wifi
 if ena_wifi:
-    if debug: print("Connecting to WiFi\n")
-    sta_if = network.WLAN(network.STA_IF)
-    sta_if.active(True)
-    sta_if.connect(credentials.ssid, credentials.password) # Connect to an AP
-
-    while not sta_if.isconnected():
-        time.sleep(1)
-        if debug: print("Waiting for Wifi...\n")
-        pass
-
+    connect_to_wifi()
 
 ## init sensors
-
 if ena_ds18x20:
     # DS18x20
     ds_pin = machine.Pin(pin_ds18x20)
@@ -137,6 +163,7 @@ if ena_bmp180:
         print("BMP180 init failed")
         ena_bmp180 = False
 
+# main loop
 while True:
     # main loop
     current_time = utime.ticks_ms()
